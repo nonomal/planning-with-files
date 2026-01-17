@@ -2,6 +2,93 @@
 
 All notable changes to this project will be documented in this file.
 
+## [2.4.0] - 2026-01-17 (Anthropic Patterns)
+
+### Added
+
+- **Session Management Features (Anthropic Patterns)** (Closes #19)
+  - Implemented key patterns from Anthropic's article "Effective harnesses for long-running agents".
+  - This provides a more robust, verifiable, and recoverable workflow for multi-session tasks.
+
+- **Enhanced Session Initialization (`init-session.sh`, `init-session.ps1`)**
+  - New scripts to start or resume a session.
+  - Runs a verification checklist on startup (planning files exist, git status clean).
+  - Displays current project status (phase, branch, last commit).
+  - Logs session start to `progress.md`.
+  - Replaces the old `session-catchup.py` with a more integrated workflow.
+
+- **Pass/Fail Status Tracking in `task_plan.md`**
+  - Template updated with a `Phase Summary` table.
+  - Phases now use status icons: ⏸️ Pending, 🔄 In Progress, ✅ Pass, ❌ Fail, ⏭️ Skipped.
+  - Each phase includes a `Test Results` table to prevent premature completion.
+  - Directly inspired by Anthropic's feature list JSON format.
+
+- **Git Checkpoint Workflow & Documentation**
+  - New `docs/git-checkpoints.md` documents the "one phase, one commit" pattern.
+  - `task_plan.md` template now includes a `Git Checkpoints` table to log commit hashes.
+  - Formalizes using git commits as reliable rollback points.
+
+### Changed
+
+- **Workflow:** The recommended workflow now centers around `init-session.sh` and git checkpoints, replacing the previous manual session recovery process.
+- **Templates:** `task_plan.md` has been significantly updated to support the new verification and checkpointing features.
+- **Documentation:** `README.md` and `SKILL.md` updated to reflect the new session management workflow.
+
+### Thanks
+
+- @wqh17101 for raising the initial issue (#19) and providing the link to the Anthropic article that inspired these changes.
+
+---
+
+## [2.3.0] - 2026-01-17
+
+### Added
+
+- **Codex IDE Support**
+  - Created `.codex/INSTALL.md` with installation instructions
+  - Skills install to `~/.codex/skills/planning-with-files/`
+  - Works with obra/superpowers or standalone
+  - Added `docs/codex.md` for user documentation
+  - Based on analysis of obra/superpowers Codex implementation
+
+- **OpenCode IDE Support** (Issue #27)
+  - Created `.opencode/INSTALL.md` with installation instructions
+  - Global installation: `~/.config/opencode/skills/planning-with-files/`
+  - Project installation: `.opencode/skills/planning-with-files/`
+  - Works with obra/superpowers plugin or standalone
+  - oh-my-opencode compatibility documented
+  - Added `docs/opencode.md` for user documentation
+  - Based on analysis of obra/superpowers OpenCode plugin
+
+### Changed
+
+- Updated README.md with Supported IDEs table
+- Updated README.md file structure diagram
+- Updated docs/installation.md with Codex and OpenCode sections
+- Version bump to 2.3.0
+
+### Documentation
+
+- Added Codex and OpenCode to IDE support table in README
+- Created comprehensive installation guides for both IDEs
+- Documented skill priority system for OpenCode
+- Documented integration with superpowers ecosystem
+
+### Research
+
+This implementation is based on real analysis of:
+- [obra/superpowers](https://github.com/obra/superpowers) repository
+- Codex skill system and CLI architecture
+- OpenCode plugin system and skill resolution
+- Skill priority and override mechanisms
+
+### Thanks
+
+- @Realtyxxx for feedback on Issue #27 about OpenCode support
+- obra for the superpowers reference implementation
+
+---
+
 ## [2.2.2] - 2026-01-17
 
 ### Fixed

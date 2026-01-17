@@ -16,7 +16,7 @@ A Claude Code plugin that transforms your workflow to use persistent markdown fi
 [![Claude Code Plugin](https://img.shields.io/badge/Claude%20Code-Plugin-blue)](https://code.claude.com/docs/en/plugins)
 [![Claude Code Skill](https://img.shields.io/badge/Claude%20Code-Skill-green)](https://code.claude.com/docs/en/skills)
 [![Cursor Rules](https://img.shields.io/badge/Cursor-Rules-purple)](https://docs.cursor.com/context/rules-for-ai)
-[![Version](https://img.shields.io/badge/version-2.2.2-brightgreen)](https://github.com/OthmanAdi/planning-with-files/releases)
+[![Version](https://img.shields.io/badge/version-2.3.0-brightgreen)](https://github.com/OthmanAdi/planning-with-files/releases)
 
 ## Quick Install
 
@@ -27,6 +27,16 @@ A Claude Code plugin that transforms your workflow to use persistent markdown fi
 
 See [docs/installation.md](docs/installation.md) for all installation methods.
 
+## Supported IDEs
+
+| IDE | Status | Installation Guide | Format |
+|-----|--------|-------------------|--------|
+| Claude Code | ✅ Full Support | [Installation](docs/installation.md) | Plugin + SKILL.md |
+| Cursor | ✅ Full Support | [Cursor Setup](docs/cursor.md) | Rules |
+| Kilocode | ✅ Full Support | [Kilocode Setup](docs/kilocode.md) | Rules |
+| OpenCode | ✅ Full Support | [OpenCode Setup](docs/opencode.md) | Personal/Project Skill |
+| Codex | ✅ Full Support | [Codex Setup](docs/codex.md) | Personal Skill |
+
 ## Documentation
 
 | Document | Description |
@@ -34,16 +44,20 @@ See [docs/installation.md](docs/installation.md) for all installation methods.
 | [Installation Guide](docs/installation.md) | All installation methods (plugin, manual, Cursor, Windows) |
 | [Quick Start](docs/quickstart.md) | 5-step guide to using the pattern |
 | [Workflow Diagram](docs/workflow.md) | Visual diagram of how files and hooks interact |
+| [Git Checkpoint Workflow](docs/git-checkpoints.md) | How to use git commits as save points (Anthropic pattern) |
 | [Troubleshooting](docs/troubleshooting.md) | Common issues and solutions |
 | [Cursor Setup](docs/cursor.md) | Cursor IDE-specific instructions |
 | [Windows Setup](docs/windows.md) | Windows-specific notes |
 | [Kilo Code Support](docs/kilocode.md) | Kilo Code integration guide |
+| [Codex Setup](docs/codex.md) | Codex IDE installation and usage |
+| [OpenCode Setup](docs/opencode.md) | OpenCode IDE installation, oh-my-opencode config |
 
 ## Versions
 
 | Version | Features | Install |
 |---------|----------|---------|
-| **v2.2.2** (current) | Restored skill activation language | `/plugin install planning-with-files@planning-with-files` |
+| **v2.3.0** (current) | Codex & OpenCode IDE support | `/plugin install planning-with-files@planning-with-files` |
+| **v2.2.2** | Restored skill activation language | See [releases](https://github.com/OthmanAdi/planning-with-files/releases) |
 | **v2.2.1** | Session recovery after /clear, enhanced PreToolUse hook | See [releases](https://github.com/OthmanAdi/planning-with-files/releases) |
 | **v2.2.0** | Kilo Code IDE support, Windows PowerShell support, OS-aware hooks | See [releases](https://github.com/OthmanAdi/planning-with-files/releases) |
 | **v2.1.2** | Fix template cache issue (Issue #18) | See [releases](https://github.com/OthmanAdi/planning-with-files/releases) |
@@ -103,44 +117,51 @@ Or invoke manually with `/planning-with-files`.
 
 See [docs/quickstart.md](docs/quickstart.md) for the full 5-step guide.
 
-## Session Recovery (NEW in v2.2.0)
+## Session Management (Anthropic Patterns)
+
+This skill now implements key session management patterns from Anthropic's article, [Effective harnesses for long-running agents](https://www.anthropic.com/engineering/effective-harnesses-for-long-running-agents). This makes the workflow more robust and easier to manage across multiple sessions.
+
+### The New Workflow
+
+1.  **Initialize Session**: Start every session (new or existing) with the `init-session` script. It verifies your environment and summarizes the project state.
+
+    ```bash
+    # In your project directory, run:
+    bash [path-to-skill]/scripts/init-session.sh
+    ```
+
+2.  **Work Through Phases**: Complete one phase from `task_plan.md` at a time.
+
+3.  **Verify and Commit**: After each phase is complete and tested, commit your changes. This creates a **git checkpoint**.
+
+    ```bash
+    git add .
+    git commit -m "feat(Phase 2): Implement user authentication"
+    ```
+
+4.  **Log Checkpoint**: Add the commit hash to your `task_plan.md`.
+
+5.  **Context Full? Start Fresh!**: If your context window fills up, simply start a new session and run `init-session.sh` again. It will read your planning files and get you right back on track.
+
+This workflow replaces the previous manual session recovery process.
 
 When your context window fills up and you run `/clear`, this skill automatically recovers unsynced work from your previous session.
 
-### Optimal Workflow
 
-For the best experience, we recommend:
 
-1. **Disable auto-compact** in Claude Code settings (use full context window)
-2. **Start a fresh session** in your project
-3. **Run `/planning-with-files`** when ready to work on a complex task
-4. **Work until context fills up** (Claude will warn you)
-5. **Run `/clear`** to start fresh
-6. **Run `/planning-with-files`** again — it will automatically recover where you left off
 
-### How Recovery Works
 
-When you invoke `/planning-with-files`, the skill:
 
-1. Checks for previous session data (stored in `~/.claude/projects/`)
-2. Finds the last time planning files were updated
-3. Extracts conversation that happened after (potentially lost context)
-4. Shows a catchup report so you can sync planning files
 
-This means even if context filled up before you could update your planning files, the skill will recover that context in your next session.
 
-### Disabling Auto-Compact
 
 To use the full context window without automatic compaction:
 
 ```bash
-# In your Claude Code settings or .claude/settings.json
-{
-  "autoCompact": false
-}
+
 ```
 
-This lets you maximize context usage before manually clearing with `/clear`.
+
 
 ## Key Rules
 
@@ -162,7 +183,9 @@ planning-with-files/
 │   ├── troubleshooting.md
 │   ├── cursor.md
 │   ├── windows.md
-│   └── kilocode.md
+│   ├── kilocode.md
+│   ├── codex.md
+│   └── opencode.md
 ├── planning-with-files/     # Plugin skill folder
 │   ├── SKILL.md
 │   ├── templates/
@@ -178,6 +201,10 @@ planning-with-files/
 │           ├── check-complete.sh
 │           ├── init-session.ps1   # Windows PowerShell
 │           └── check-complete.ps1 # Windows PowerShell
+├── .codex/                  # Codex IDE installation guide
+│   └── INSTALL.md
+├── .opencode/               # OpenCode IDE installation guide
+│   └── INSTALL.md
 ├── .claude-plugin/          # Plugin manifest
 ├── .cursor/                 # Cursor rules
 ├── .kilocode/               # Kilo Code rules
@@ -195,8 +222,9 @@ planning-with-files/
 | Filesystem as memory | Store in files, not context |
 | Attention manipulation | Re-read plan before decisions (hooks) |
 | Error persistence | Log failures in plan file |
-| Goal tracking | Checkboxes show progress |
+| Goal tracking | Pass/fail status in `task_plan.md` |
 | Completion verification | Stop hook checks all phases |
+| **Git as Memory** | **Commit after each phase for rollback** |
 
 ## When to Use
 

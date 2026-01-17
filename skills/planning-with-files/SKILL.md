@@ -1,6 +1,6 @@
 ---
 name: planning-with-files
-version: "2.2.2"
+version: "2.3.0"
 description: Implements Manus-style file-based planning for complex tasks. Creates task_plan.md, findings.md, and progress.md. Use when starting complex multi-step tasks, research projects, or any task requiring >5 tool calls. Now with automatic session recovery after /clear.
 user-invocable: true
 allowed-tools:
@@ -38,19 +38,29 @@ hooks:
 
 Work like Manus: Use persistent markdown files as your "working memory on disk."
 
-## FIRST: Check for Previous Session (v2.2.0)
+## FIRST: Initialize Your Session
+
+**Before starting work**, run the session initialization script. This script verifies your environment, checks for existing planning files, and summarizes the project status. It's based on the `init.sh` pattern from Anthropic's best practices.
+
+```bash
+# This script will guide you, whether it's a new or existing project.
+bash ${CLAUDE_PLUGIN_ROOT}/scripts/init-session.sh
+```
+
+If you are on Windows, use the PowerShell version:
+```powershell
+. ${CLAUDE_PLUGIN_ROOT}/scripts/init-session.ps1
+```
+
+This replaces the need to manually run `session-catchup.py`, as the functionality is now integrated.
 
 **Before starting work**, check for unsynced context from a previous session:
 
 ```bash
-python3 ${CLAUDE_PLUGIN_ROOT}/scripts/session-catchup.py "$(pwd)"
+
 ```
 
-If catchup report shows unsynced context:
-1. Run `git diff --stat` to see actual code changes
-2. Read current planning files
-3. Update planning files based on catchup + git diff
-4. Then proceed with task
+
 
 ## Important: Where Files Go
 
@@ -61,6 +71,17 @@ If catchup report shows unsynced context:
 |----------|-----------------|
 | Skill directory (`${CLAUDE_PLUGIN_ROOT}/`) | Templates, scripts, reference docs |
 | Your project directory | `task_plan.md`, `findings.md`, `progress.md` |
+
+## The Core Pattern: Plan, Verify, Commit
+
+This skill is built on the core loop from Anthropic's long-running agent patterns:
+
+1.  **Plan**: Use `task_plan.md` to define your phases.
+2.  **Implement**: Complete one phase at a time.
+3.  **Verify**: Test that the phase is truly complete.
+4.  **Commit**: Create a `git checkpoint` to save your work.
+
+See the [docs/git-checkpoints.md](docs/git-checkpoints.md) for a detailed guide on this workflow.
 
 ## Quick Start
 
@@ -201,12 +222,12 @@ Copy these templates to start:
 
 Helper scripts for automation:
 
-- `scripts/init-session.sh` — Initialize all planning files
-- `scripts/check-complete.sh` — Verify all phases complete
-- `scripts/session-catchup.py` — Recover context from previous session (v2.2.0)
+- `scripts/init-session.sh` / `.ps1` — **Run this first!** Initializes or resumes a session with verification.
+- `scripts/check-complete.sh` / `.ps1` — Verifies all phases are complete (used by Stop hook).
 
 ## Advanced Topics
 
+- **Git Checkpoint Workflow:** See [docs/git-checkpoints.md](docs/git-checkpoints.md)
 - **Manus Principles:** See [reference.md](reference.md)
 - **Real Examples:** See [examples.md](examples.md)
 
