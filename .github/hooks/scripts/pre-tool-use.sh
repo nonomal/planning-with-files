@@ -7,6 +7,10 @@
 # Read stdin (required — Copilot pipes JSON to stdin)
 INPUT=$(cat)
 
+# Disabled means no opinion, not blanket approval: emit the same empty object the
+# no-plan-file path emits so Copilot's own permission flow decides.
+[ "${PLANNING_DISABLED:-}" = "1" ] && { echo '{}'; exit 0; }
+
 PLAN_FILE="task_plan.md"
 
 if [ ! -f "$PLAN_FILE" ]; then
@@ -22,8 +26,12 @@ if [ -z "$CONTEXT" ]; then
 fi
 
 # Escape context for JSON
-PYTHON=$(command -v python3 || command -v python)
+PYTHON=""
+for _p in /usr/bin/python3 /usr/local/bin/python3 /opt/homebrew/bin/python3; do
+    [ -x "$_p" ] && { PYTHON="$_p"; break; }
+done
+[ -z "$PYTHON" ] && PYTHON=$(command -v python3 2>/dev/null || command -v python 2>/dev/null)
 ESCAPED=$(echo "$CONTEXT" | $PYTHON -c "import sys,json; print(json.dumps(sys.stdin.read(), ensure_ascii=False))" 2>/dev/null || echo "\"\"")
 
-echo "{\"hookSpecificOutput\":{\"hookEventName\":\"PreToolUse\",\"permissionDecision\":\"allow\",\"additionalContext\":$ESCAPED}}"
+printf '%s\n' "{\"hookSpecificOutput\":{\"hookEventName\":\"PreToolUse\",\"permissionDecision\":\"allow\",\"additionalContext\":$ESCAPED}}"
 exit 0

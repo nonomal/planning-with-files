@@ -33,6 +33,9 @@ TEMPLATES = [
     "templates/findings.md",
     "templates/progress.md",
     "templates/task_plan.md",
+    "templates/loop.md",
+    "templates/analytics_task_plan.md",
+    "templates/analytics_findings.md",
 ]
 
 REFERENCES = [
@@ -46,6 +49,42 @@ SCRIPTS = [
     "scripts/init-session.sh",
     "scripts/init-session.ps1",
     "scripts/session-catchup.py",
+    "scripts/resolve-plan-dir.sh",
+    "scripts/resolve-plan-dir.ps1",
+    "scripts/set-active-plan.sh",
+    "scripts/set-active-plan.ps1",
+    "scripts/attest-plan.sh",
+    "scripts/attest-plan.ps1",
+    "scripts/plan-doctor.sh",
+]
+
+# Every hook-bearing SKILL.md dispatches through skill-hook.sh. Its sibling
+# injector needs ledger-summary.sh and resolve-plan-dir.sh; Stop also needs
+# gate-stop.sh and the shared check-complete.sh. Ship the complete dependency
+# chain in every variant's own scripts directory.
+HOOK_DISPATCH_SCRIPTS = [
+    "scripts/inject-plan.sh",
+    "scripts/ledger-summary.sh",
+    "scripts/resolve-plan-dir.sh",
+    "scripts/skill-hook.sh",
+    "scripts/gate-stop.sh",
+]
+
+# .agents/ ships the FULL canonical surface (no IDE adapter layer exists to
+# carry the rest): hook dispatchers, ledger tooling, and every template.
+AGENTS_EXTRA_SCRIPTS = [
+    "scripts/gate-stop.sh",
+    "scripts/inject-plan.sh",
+    "scripts/ledger-append.sh",
+    "scripts/ledger-append.ps1",
+    "scripts/ledger-summary.sh",
+    "scripts/ledger-summary.ps1",
+    "scripts/phase-status.sh",
+    "scripts/phase-status.ps1",
+    "scripts/skill-hook.sh",
+]
+AGENTS_EXTRA_TEMPLATES = [
+    "templates/task_plan_autonomous.md",
 ]
 
 # ─── IDE sync manifests ───────────────────────────────────────────
@@ -53,7 +92,8 @@ SCRIPTS = [
 # Only files listed here are synced. Everything else is untouched.
 
 def _build_manifest(base, *, ref_style="flat", template_dirs=None,
-                    include_scripts=True, extra_template_dirs=None):
+                    include_scripts=True, extra_template_dirs=None,
+                    extra_scripts=None):
     """Build a sync manifest for an IDE folder.
 
     Args:
@@ -62,6 +102,8 @@ def _build_manifest(base, *, ref_style="flat", template_dirs=None,
         template_dirs: list of template subdirs (default: ["templates/"])
         include_scripts: whether to sync scripts
         extra_template_dirs: additional dirs to also receive template copies
+        extra_scripts: scripts beyond the shared SCRIPTS list (e.g. the hook
+            dispatch targets in HOOK_DISPATCH_SCRIPTS)
     """
     manifest = {}
     b = Path(base)
@@ -95,6 +137,11 @@ def _build_manifest(base, *, ref_style="flat", template_dirs=None,
         for s in SCRIPTS:
             manifest[s] = str(b / s)
 
+    # Extra scripts (hook dispatch targets and other per-IDE additions)
+    if extra_scripts:
+        for s in extra_scripts:
+            manifest[s] = str(b / s)
+
     return manifest
 
 
@@ -102,8 +149,11 @@ IDE_MANIFESTS = {
     ".cursor": _build_manifest(
         ".cursor/skills/planning-with-files",
         ref_style="flat",
-        include_scripts=False,
-        # Cursor hooks are IDE-specific, not synced
+        include_scripts=True,
+        extra_scripts=HOOK_DISPATCH_SCRIPTS,
+        # Cursor hooks (.cursor/hooks/) are IDE-specific, not synced. The
+        # skill's own scripts/ ARE synced: the SKILL.md hook scalars dispatch
+        # to them (issue #212), so shipping none left the dispatch dead.
     ),
 
     ".gemini": _build_manifest(
@@ -116,16 +166,34 @@ IDE_MANIFESTS = {
         ".codex/skills/planning-with-files",
         ref_style="subdir",
         include_scripts=True,
+        extra_scripts=HOOK_DISPATCH_SCRIPTS,
     ),
 
     # .openclaw, .kilocode, .adal, .agent removed in v2.24.0 (IDE audit)
     # These IDEs use the standard Agent Skills spec — install via npx skills add
 
+    # .pi is not just another IDE mirror: this directory IS the root of the
+    # npm package `planning-with-files`, so whatever it contains is what
+    # `npm install planning-with-files` delivers. It shipped 12 of the 20
+    # canonical scripts, missing inject-plan.sh itself, which meant the npm
+    # channel carried a skill that could not inject a plan at all. Everything
+    # language-neutral is synced here for that reason.
+    # package.json and README.md stay npm-specific and are not synced.
     ".pi": _build_manifest(
         ".pi/skills/planning-with-files",
         ref_style="flat",
         include_scripts=True,
-        # package.json and README.md are IDE-specific, not synced
+        extra_scripts=[
+            "scripts/inject-plan.sh",
+            "scripts/gate-stop.sh",
+            "scripts/ledger-append.sh",
+            "scripts/ledger-append.ps1",
+            "scripts/ledger-summary.sh",
+            "scripts/ledger-summary.ps1",
+            "scripts/phase-status.sh",
+            "scripts/phase-status.ps1",
+            "scripts/skill-hook.sh",
+        ],
     ),
 
     ".continue": _build_manifest(
@@ -140,22 +208,114 @@ IDE_MANIFESTS = {
         ".codebuddy/skills/planning-with-files",
         ref_style="subdir",
         include_scripts=True,
+        extra_scripts=HOOK_DISPATCH_SCRIPTS,
     ),
 
     ".factory": _build_manifest(
         ".factory/skills/planning-with-files",
         ref_style="skip",  # Uses combined references.md, not synced
         include_scripts=True,
+        extra_scripts=HOOK_DISPATCH_SCRIPTS,
     ),
 
     ".opencode": _build_manifest(
         ".opencode/skills/planning-with-files",
         ref_style="flat",
         include_scripts=False,
+        extra_scripts=HOOK_DISPATCH_SCRIPTS,
+    ),
+
+    # Mastracode: templates/references maintained under .mastracode/; only the
+    # hook dispatch targets are synced from canonical.
+    ".mastracode": _build_manifest(
+        ".mastracode/skills/planning-with-files",
+        ref_style="skip",
+        template_dirs=[],
+        include_scripts=False,
+        extra_scripts=HOOK_DISPATCH_SCRIPTS,
     ),
 
     # Kiro: maintained under .kiro/ (skill + wrappers); not synced from canonical scripts/.
     ".kiro": {},
+}
+
+# Scripts the language variants ship in TRANSLATED form: check-complete and
+# init-session carry localized user-facing output, and session-catchup.py
+# carries localized recovery prose (verified: -de/session-catchup.py contains
+# German text, five -ar scripts contain Arabic). include_scripts=True would
+# overwrite all of them with the English canonical, so these are never synced
+# and stay owned by their translators.
+LANG_TRANSLATED_SCRIPTS = [
+    "scripts/check-complete.sh",
+    "scripts/check-complete.ps1",
+    "scripts/init-session.sh",
+    "scripts/init-session.ps1",
+    "scripts/session-catchup.py",
+]
+
+# Everything else the canonical skill ships. These 12 never existed in any
+# variant, so delivering them is purely additive: non-English users were
+# missing the completion gate, the ledger, phase-status, plan-doctor and
+# attestation entirely, which is the drift issue #130 describes. Their few
+# user-facing strings are English until a translator PR localizes them; a
+# missing script is a silently dead feature, an English string is not.
+LANG_EXTRA_SCRIPTS = HOOK_DISPATCH_SCRIPTS + [
+    "scripts/attest-plan.sh",
+    "scripts/attest-plan.ps1",
+    "scripts/gate-stop.sh",
+    "scripts/ledger-append.sh",
+    "scripts/ledger-append.ps1",
+    "scripts/ledger-summary.ps1",
+    "scripts/phase-status.sh",
+    "scripts/phase-status.ps1",
+    "scripts/plan-doctor.sh",
+    "scripts/resolve-plan-dir.ps1",
+    "scripts/set-active-plan.sh",
+    "scripts/set-active-plan.ps1",
+]
+
+# Language variants (skills/i18n/planning-with-files-<lang>/): SKILL.md, templates
+# and references are real translations and must NEVER be overwritten with the
+# English canonical. Same for LANG_TRANSLATED_SCRIPTS above. The rest of the
+# canonical script surface is synced so non-English installs get the same
+# features, not a subset (issue #212 covered only the 3 dispatch targets).
+for _lang in ("ar", "de", "es", "zh", "zht"):
+    _base = f"skills/i18n/planning-with-files-{_lang}"
+    IDE_MANIFESTS[_base] = _build_manifest(
+        _base,
+        ref_style="skip",
+        template_dirs=[],
+        include_scripts=False,
+        extra_scripts=LANG_EXTRA_SCRIPTS,
+    )
+
+
+def _build_agents_manifest():
+    """Manifest for .agents/skills/ — the cross-tool Agent Skills standard.
+
+    Shipped in-repo so a plain git clone is natively discoverable by every
+    tool that reads .agents/skills/ (Zed, Amp, Warp, Devin, Antigravity,
+    Gemini CLI, Cursor). SKILL.md itself is version-bumped by bump-version.py
+    and deliberately not synced here, matching every other IDE folder.
+    """
+    base = ".agents/skills/planning-with-files"
+    manifest = _build_manifest(base, ref_style="flat", include_scripts=True)
+    b = Path(base)
+    for s in AGENTS_EXTRA_SCRIPTS:
+        manifest[s] = str(b / s)
+    for t in AGENTS_EXTRA_TEMPLATES:
+        manifest[t] = str(b / "templates" / Path(t).name)
+    return manifest
+
+
+IDE_MANIFESTS[".agents"] = _build_agents_manifest()
+
+# The plugin fallback resolves helpers beside the root injector. Keep the new
+# standalone adapter and its loop asset in the same verified inventory.
+IDE_MANIFESTS["."] = {
+    "scripts/inject-plan.sh": "scripts/inject-plan.sh",
+    "scripts/skill-hook.sh": "scripts/skill-hook.sh",
+    "templates/loop.md": "templates/loop.md",
 }
 
 

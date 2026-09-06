@@ -30,11 +30,19 @@ Or edit `~/.gemini/settings.json`:
 
 ## Installation Methods
 
-### Method 1: Install from GitHub (Recommended)
+### Method 1: The Agent Skills standard path (Recommended since v3.7.0)
+
+Gemini CLI reads the cross-tool `.agents/skills/` layout natively (the alias takes precedence over `.gemini/skills/`), and this repo ships the current, version-locked skill there. Either install route lands the up-to-date skill:
 
 ```bash
-gemini skills install https://github.com/OthmanAdi/planning-with-files --path .gemini/skills/planning-with-files
+# via the skills installer (targets Gemini among 70+ agents)
+npx skills add OthmanAdi/planning-with-files
+
+# or from GitHub, pointing at the standard layout
+gemini skills install https://github.com/OthmanAdi/planning-with-files --path .agents/skills/planning-with-files
 ```
+
+The historical `.gemini/skills/` variant in this repo is intentionally version-lagged and kept only for existing installs; new installs should use the standard path above, which is bumped with every release.
 
 ### Method 2: Manual Installation (User-level)
 
@@ -42,8 +50,8 @@ gemini skills install https://github.com/OthmanAdi/planning-with-files --path .g
 # Clone the repository
 git clone https://github.com/OthmanAdi/planning-with-files.git
 
-# Copy to Gemini skills folder
-cp -r planning-with-files/.gemini/skills/planning-with-files ~/.gemini/skills/
+# Copy the current skill from the standard layout to the Gemini skills folder
+cp -r planning-with-files/.agents/skills/planning-with-files ~/.gemini/skills/
 ```
 
 ### Method 3: Manual Installation (Workspace-level)
@@ -54,8 +62,8 @@ For project-specific installation:
 # In your project directory
 mkdir -p .gemini/skills
 
-# Copy skill
-cp -r /path/to/planning-with-files/.gemini/skills/planning-with-files .gemini/skills/
+# Copy the current skill from the standard layout
+cp -r /path/to/planning-with-files/.agents/skills/planning-with-files .gemini/skills/
 ```
 
 ## Verify Installation
@@ -114,10 +122,12 @@ Gemini CLI supports [hooks](https://geminicli.com/docs/hooks/) — lifecycle eve
 
 | Hook Event | What It Does |
 |------------|-------------|
-| **SessionStart** | Recovers context from previous session via `session-catchup.py` |
+| **SessionStart** | Recovers selected context from project planning files without reading agent session stores |
 | **BeforeTool** | Reads first 30 lines of `task_plan.md` before write/read/shell operations |
 | **AfterTool** | Reminds to update `progress.md` after file changes |
 | **BeforeModel** | Injects current phase awareness before every model call (unique to Gemini!) |
+
+Local agent session history is not part of automatic startup. Explicit `session-catchup.py --metadata <project>` reads same-project local session records and emits aggregate counts only. Use `--replay` for bounded nonce-framed excerpts. The catchup path contains no network request or upload operation.
 
 ### Installing Hooks
 

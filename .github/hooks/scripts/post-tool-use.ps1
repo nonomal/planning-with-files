@@ -1,4 +1,4 @@
-# planning-with-files: Post-tool-use hook for GitHub Copilot (PowerShell)
+﻿# planning-with-files: Post-tool-use hook for GitHub Copilot (PowerShell)
 # Reminds the agent to update task_plan.md after tool use.
 # Always exits 0 — outputs JSON to stdout.
 
@@ -6,6 +6,11 @@
 $OutputEncoding = [System.Text.Encoding]::UTF8
 [Console]::OutputEncoding = [System.Text.Encoding]::UTF8
 $InputData = [Console]::In.ReadToEnd()
+
+if ($env:PLANNING_DISABLED -eq '1') {
+    Write-Output '{}'
+    exit 0
+}
 
 $output = @{
     hookSpecificOutput = @{

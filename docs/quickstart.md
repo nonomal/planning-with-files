@@ -18,6 +18,9 @@ If you invoke the skill without a task description, the AI will ask you what you
 
 **Manual alternative:** If you prefer to create files yourself:
 ```bash
+# List the available options without creating files or changing the active plan
+./scripts/init-session.sh --help
+
 # Use the init script
 ./scripts/init-session.sh
 # Then fill in the Goal section in task_plan.md
@@ -77,6 +80,53 @@ If you invoke the skill without a task description, the AI will ask you what you
 
 ---
 
+## Optional: Split Large or Unrelated Topics
+
+For one focused task, the three root files are enough. For several unrelated
+tasks in the same repository, use an isolated plan directory so each topic has
+its own `task_plan.md`, `findings.md`, and `progress.md`:
+
+```bash
+./scripts/init-session.sh backend-refactor
+./scripts/init-session.sh production-incident
+./scripts/set-active-plan.sh 2026-01-10-backend-refactor
+```
+
+The active-plan pointer above is shared and suits sequential switching. For
+concurrent sessions, set a different `PLAN_ID` in each host's environment before
+starting it, using the exact ID printed by initialization. In PowerShell use
+`$env:PLAN_ID = 'the-printed-id'`; in a POSIX shell use
+`export PLAN_ID=the-printed-id`. Setting it inside one tool subprocess does not
+change an already-running host. Use separate worktrees if per-task host pins are
+unavailable. `PWF_PLAN_ROOT` chooses a project, not a task within that project.
+
+On recovery, resolve the selected plan first and read all three files from that
+directory. Do not substitute a root `task_plan.md` for a selected named plan.
+When several agents share one task, keep one owner for the plan and summaries;
+workers append to their own ledgers or assigned files.
+
+For a long-running operational topic that shares the same root plan, keep
+`progress.md` concise and move durable details into a topic handoff file:
+
+```text
+progress.md
+  Runtime-wide timeline and short pointers
+
+handoffs/backend-refactor.md
+  Current state, commands, validation, risks, rollback, PR links
+```
+
+Use this pattern when a discussion spans multiple sessions, has many commands,
+or needs a clean resume point without scanning the full timeline. Add one short
+line to `progress.md` whenever the topic handoff changes, then put the details
+in the handoff file.
+
+For GitHub work, `progress.md` should usually record only the branch, commit,
+PR URL, validation summary, and handoff file. Put the longer PR context,
+remaining risks, and rollback notes in the topic handoff.
+
+---
+
 ## Step 4: Re-read Before Decisions
 
 **When:** Before making major decisions (automatic with hooks in Claude Code)
@@ -105,6 +155,8 @@ If you invoke the skill without a task description, the AI will ask you what you
 **If not complete:** The Stop hook (or script) will prevent stopping. Continue working until all phases are done.
 
 **If complete:** Deliver your work! All three planning files document your process.
+
+The planning files are working memory, not a tracked deliverable: they are gitignored and are not archived automatically. See [After Completion: What Happens to the Plan Files](workflow.md#after-completion-what-happens-to-the-plan-files) for the intended lifecycle and how to keep a completed plan if you want one.
 
 ---
 

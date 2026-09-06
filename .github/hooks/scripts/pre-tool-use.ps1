@@ -1,4 +1,4 @@
-# planning-with-files: Pre-tool-use hook for GitHub Copilot (PowerShell)
+﻿# planning-with-files: Pre-tool-use hook for GitHub Copilot (PowerShell)
 # Reads the first 30 lines of task_plan.md to keep goals in context.
 # Always allows tool execution — this hook never blocks tools.
 # Always exits 0 — outputs JSON to stdout.
@@ -7,6 +7,13 @@
 $OutputEncoding = [System.Text.UTF8Encoding]::new($false)
 [Console]::OutputEncoding = [System.Text.UTF8Encoding]::new($false)
 $InputData = [Console]::In.ReadToEnd()
+
+# Disabled means no opinion, not blanket approval: emit the same empty object the
+# no-plan-file path emits so Copilot's own permission flow decides.
+if ($env:PLANNING_DISABLED -eq '1') {
+    Write-Output '{}'
+    exit 0
+}
 
 $PlanFile = "task_plan.md"
 
